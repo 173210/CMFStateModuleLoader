@@ -1,5 +1,5 @@
 TARGET = CMFStateModuleLoader
-OBJS = main.o CMF_STATE.o
+OBJS = main.o smsutils.o CMF_STATE.o stub.o exports.o
 
 USE_KERNEL_LIBC = 1
 USE_KERNEL_LIBS = 1

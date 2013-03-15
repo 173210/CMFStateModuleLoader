@@ -1,22 +1,27 @@
-//sample
+//This file includes codes from prx-common-librarys and CMF.
+//CMF codes is licensed under GPLv3.
 
 #include <pspsdk.h>
 #include <pspkernel.h>
 #include <pspctrl.h>
 #include <pspctrl_kernel.h>
+#include <pspinit.h>
+#include <pspiofilemgr.h>
 
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 
+#include "smsutils.h"
+
 /*-----------------------------------------------------------------*/
 
-PSP_MODULE_INFO("CMFStateModuleLoader", 0x1000, 1, 0);
+PSP_MODULE_INFO("PspStates", 0x1000, 0, 1);
 
 
 /*------------------------------------------------------------------*/
 
-// プロトタイプ宣言
+// Declaration of Prototypes
 int main_thread(SceSize args, void *argp);
 int module_start(SceSize args, void *argp);
 int module_stop(SceSize args, void *argp);
@@ -25,6 +30,13 @@ int module_stop(SceSize args, void *argp);
 
 
 bool status = false;
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//  Codes from CMF		by koro
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------
 #define MAX_THREAD 64
 typedef struct _main_ctx{
 	int thread_count_now;
@@ -32,21 +44,99 @@ typedef struct _main_ctx{
 	SceUID thread_buf_now[MAX_THREAD];
 	SceUID thread_org_stat[MAX_THREAD];
 	SceUID mainthid;
+	SceUID modid;
 	SceKernelThreadEntry thid_entry;
-	
+
 	int saved;
-	int loaded;
+	char gname[12+84];
+	char save_path[32];
 }__attribute__((packed)) t_main_ctx;
+
+char *ssave;
+char *ssav2;
 
 static t_main_ctx main_ctx __attribute__(   (  aligned( 4 ), section( ".bss" )  )   );
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-//  INIT METHOD		by SnyFbSx and estuibal
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-char CMFState_path[] = { "ms0:/CheatMaster/prx/state.prx"};
-//------------------------------------------------------
+char mod_name[] = { "CMF_STATE"};
+char save_dir[] = { "ms0:/SAVESTATE_CMF"};
+
+void *sceKernelGetGameInfo();
+
+char GetButtons(SceCtrlData *pad)
+{
+	if(pad->Buttons & PSP_CTRL_LEFT)
+	{
+		return 'l';
+	}
+	else if(pad->Buttons & PSP_CTRL_UP)
+	{
+		return 'u';
+	}
+	else if(pad->Buttons & PSP_CTRL_DOWN)
+	{
+		return 'd';
+	}
+	else if(pad->Buttons & PSP_CTRL_RIGHT)
+	{
+		return 'r';
+	}
+	else if(pad->Buttons & PSP_CTRL_SQUARE)
+	{
+		return 'q';
+	}
+	else if(pad->Buttons & PSP_CTRL_TRIANGLE)
+	{
+		return 't';
+	}
+	else if(pad->Buttons & PSP_CTRL_CROSS)
+	{
+		return 'x';
+	}
+	else if(pad->Buttons & PSP_CTRL_CIRCLE)
+	{
+		return 'c';
+	}
+	else if(pad->Buttons & PSP_CTRL_START)
+	{
+		return 's';
+	}
+
+	return 0x00;
+}
+
+void get_gname()
+{
+	int fd;
+	char *p __attribute__((unused));
+	memset(main_ctx.gname, 0x00, 12);
+
+	switch(sceKernelInitKeyConfig())
+	{
+	case PSP_INIT_KEYCONFIG_POPS:
+		fd = 0;
+		char *p;
+		p=(char *)(0x100b8b7+0x8800000);
+		while(*p==0 && fd++<10)
+		{
+			sceKernelDelayThread(3000000);
+		}
+		p=(char *)(0x100b8b0+0x8800000);
+		p=strchr(p, ';');
+		if(p)
+			mips_memcpy(main_ctx.gname, p-11, 11);
+		else strcpy(main_ctx.gname,"PSX");
+		break;
+	case PSP_INIT_KEYCONFIG_GAME:
+		//This part is from CustomHOME
+		p = sceKernelGetGameInfo() + 0x44;
+		strcpy(main_ctx.gname, p);
+		break;
+	default:
+		strcpy(main_ctx.gname,"HOMEBREW");
+		break;
+	}
+}
+
 static int ReferThread(SceUID uid, SceKernelThreadInfo *info)
 {
 	memset(info, 0, sizeof(SceKernelThreadInfo));
@@ -123,76 +213,106 @@ RESUME:
 	}
 }
 
-int LoadStartModule(char *module)
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//  INIT METHOD		by SnyFbSx and estuibal
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------
+
+int LoadStartModule(void)
 {
-	SceUID mod = sceKernelLoadModule(module, 0, NULL);
-
-	if (mod < 0)
-		return mod;
-
-	return sceKernelStartModule(mod, strlen(module)+1, module, NULL, NULL);
-}
-
-int load_module( char *prx_title, char *prx_path )
-{
-	if( sceKernelFindModuleByName( prx_title ) == NULL ) {
-		LoadStartModule( prx_path );
-		if( sceKernelFindModuleByName( prx_title ) == NULL ) {
-			prx_path[0] = 'e';
-			prx_path[1] = 'f';
-			LoadStartModule( prx_path );
-		}
-	}
-	sceKernelDelayThread( 1000 );
-	return 0;
-}
-
-
-int init(void)
-{
-	main_ctx.saved = 0;
-	main_ctx.loaded = 0;
+	if( sceKernelFindModuleByName(mod_name) != NULL ) return 0;
 	while(1)
 	{
 		if(sceKernelFindModuleByName("sceKernelLibrary")){
-			load_module("CMF_STATE",CMFState_path);
+			main_ctx.modid = sceKernelLoadModule("ms0:/CheatMaster/prx/state.prx", 0, NULL);
 
 			break;
 		}
-		
+
 		sceKernelDelayThread(1000);
 	}
+	if (main_ctx.modid < 0) return 1;
+
+	SceKernelModuleInfo info;
+	sceKernelQueryModuleInfo(main_ctx.modid, &info);
+	ssave = (char *)(info.text_addr + 0x1C00);
+	ssav2 = (char *)(info.text_addr + 0x1C40);
+
+	sceKernelStartModule(main_ctx.modid, strlen(mod_name)+1, mod_name, NULL, NULL);
+
+	return 0;
+}
+
+int init(char number)
+{
+	sprintf(ssave, "%s/%c_0.BIN", main_ctx.save_path, number);
+	sprintf(ssav2, "%s/%c_1.BIN", main_ctx.save_path, number);
+
+	pause_game(main_ctx.mainthid);
+
 	return 0;
 }
 
 /*------------------------------------------------------------------*/
 
+void SaveStates(char number, int flag)
+{
+	init(number);
+	st_save(&main_ctx.saved);
+	resume_game(main_ctx.mainthid);
+}
 
-//メイン
+void LoadStates(char number, int flag)
+{
+	init(number);
+	st_load(&main_ctx.saved);
+	resume_game(main_ctx.mainthid);
+}
+
+//Main
 int main_thread(SceSize args, void *argp)
 {
-	init();
+	main_ctx.pauseuid = -1;
+
+	get_gname();
+	sprintf(main_ctx.save_path, "%s/%s", save_dir, main_ctx.gname);
+	SceIoStat buf;
+	if(sceIoGetstat(main_ctx.save_path, &buf))
+	{
+		if(sceIoGetstat(save_dir, &buf)) {
+			if(sceIoMkdir(save_dir, 0777)) return 1;
+			if(sceIoGetstat(save_dir, &buf)) return 1;
+		}
+		else if(!FIO_S_ISDIR(buf.st_mode)) return 1;
+		if(sceIoMkdir(main_ctx.save_path, 0777)) return 1;
+		if(sceIoGetstat(main_ctx.save_path, &buf)) return 1;
+	}
+	else if(!FIO_S_ISDIR(buf.st_mode)) return 1;
+
+	LoadStartModule();
 	SceCtrlData pad;
+	char number;
 
 	while(1)
 	{
 		sceKernelDelayThread(50000);
 		sceCtrlPeekBufferPositive(&pad, 1);
 
-		if((pad.Buttons & PSP_CTRL_LTRIGGER) && (pad.Buttons & PSP_CTRL_RTRIGGER) && (pad.Buttons & PSP_CTRL_SELECT))
+		if(pad.Buttons & PSP_CTRL_SELECT)
 		{
-			if(pad.Buttons & PSP_CTRL_UP)
+			if(pad.Buttons & PSP_CTRL_RTRIGGER)
 			{
-				pause_game(main_ctx.mainthid);
-				if(main_ctx.loaded == 0) main_ctx.saved++;
-				st_save(&main_ctx.saved);
-				resume_game(main_ctx.mainthid);
+				number = GetButtons(&pad);
+				if(number != 0x00)
+					SaveStates(number, 0);
 			}
-			else if(pad.Buttons & PSP_CTRL_DOWN)
+			else if(pad.Buttons & PSP_CTRL_LTRIGGER)
 			{
-				pause_game(main_ctx.mainthid);
-				st_load(&main_ctx.saved);
-				resume_game(main_ctx.mainthid);
+				number = GetButtons(&pad);
+				if(number != 0x00)
+					LoadStates(number, 0);
 			}
 		}
 	}
@@ -202,7 +322,6 @@ int main_thread(SceSize args, void *argp)
 
 int module_start(SceSize args, void *argp)
 {
-	main_ctx.pauseuid = -1;
 	main_ctx.mainthid = sceKernelCreateThread("CMFStateModuleLoaderThread", main_thread, 8, 64*1024, 0, NULL);
 	if(main_ctx.mainthid >= 0)
 	{
