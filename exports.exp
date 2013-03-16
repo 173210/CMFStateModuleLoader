@@ -10,6 +10,7 @@ PSP_EXPORT_FUNC(module_stop)
 PSP_EXPORT_END
 
 PSP_EXPORT_START(PspStatesLibrary, 0, 0x0001)
+PSP_EXPORT_FUNC_HASH(load_cmf_state_module)
 PSP_EXPORT_FUNC_NID(SaveStates, 0x31BDF666)
 PSP_EXPORT_FUNC_NID(LoadStates, 0x7B9DE7E3)
 #PSP_EXPORT_FUNC_NID(sceCtrlPeekBufferPositivePatched, 0x743B4BE7)
