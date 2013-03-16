@@ -1,4 +1,4 @@
-CMFStateModuleLoader Rev.1 by 173210
+CMFStateModuleLoader by 173210
 ------------------------------------
 　このプログラムはPSPでCMFに含まれるstate.prxを読み込み、32MBのみのメモリでステートセーブやロードをするプログラムです。
 
@@ -7,23 +7,32 @@ CMFStateModuleLoader Rev.1 by 173210
 　ステートセーブ時のstate.prxの挙動については一切責任を負いかねます。
 　このプログラムを使用する際にはCMFの使用許諾(んなもんあったけな?)を読んでから使用してください。
 　state.prxに関してはその許諾に従います。
+　また、state.prxはePSP上での動作を想定していないことを覚えておいてください。
 
 ・既知の問題
-　・スリープすると次回の動作に不具合が出る。
+　・スリープすると次回の動作に不具合が出る。(PS Vitaに関しては無関係なはず)
+　state.prx側の問題
 　・セーブデータのないスロットを読み込むとフリーズする。
+　・HOME画面の表示に異常が出る。CustomHOMEも同じ。
 
 ・導入方法
 　ZIP内のms0/CheatMasterフォルダをms0:にコピーし、CMFStateModuleLoader.prxをプラグインに追加する。
 
 ・使用方法
 　R+SELECTと十字キー↑・↓・←・→（全方向）/○ボタン/×ボタン/□ボタン/△ボタン/STARTボタンのどれかでセーブし、
-　L+SELECTとセーブ時に押したボタンを押してでロードします。
+　L+SELECTとセーブ時に押したボタンを押してロードします。
+
+・変更履歴
+2013/03/16 Rev.2 マルチスロットに対応
+                 ほかのゲームのセーブデータを読み込んでしまうstate.prxの仕様を修正
+                 PspStatesに似せた仕様に変更
+2013/03/13 Rev.1 初期リリース
 
 ----------------
 開発者の方へ
 ----------------
 　このプログラムはPspStatesと同じように動作するはずです。
-しかし一部異なる部分があるので説明します。
+しかし多々異なる部分があるので説明します。
 
 ・セーブデータの保存先
 　セーブデータはms0:/SAVESTATES_CMF/$(UMDID)に保存されます。
@@ -36,6 +45,13 @@ CMFStateModuleLoader Rev.1 by 173210
 
 ・sceCtrlPeekBufferPositivePatched関数に未対応
 
+・使用前に"load_cmf_state_module"関数を実行しなければならない
+　ただし"module_start"が呼ばれた後(すなわちプラグインとしてCMFStateModuleLoaderが実行されているとき)や既に実行した場合は実行しないでください。
+
+・HOME画面を破壊する
+　HOME画面で何かを表示するプログラムは何らかの対策が必要です。
+　なお、現時点では画面表示の破壊のみ確認されており、プログラムの動作自体への影響は分かりません。
+
 --------------------------------
 このプログラムは
 koro氏によって作成されたCMFのソースコードと
@@ -43,7 +59,8 @@ Team Otwibacoによって作成されたPrx Common Librariesのソースコード、
 ABCanG (阿部)によって作成されたCustomHOMEのソースコード、
 plum氏によってリバースされたPspStatesのソースコード
 を参考にしています。
-koro氏とTeam Otwibacoのみなさん、ありがとうございます。
+koro氏とABCanG (阿部)、plum氏、Team Otwibacoのみなさん、ありがとうございます。
+もし、ライセンス違反等ありましたらご連絡ください。
 
 このプログラムのソースコードはhttps://github.com/173210/CMFStateModuleLoaderで公開されています。
 GPLv3にてライセンスされています。詳細はLICENSE.TXTを参照してください。
