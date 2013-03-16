@@ -219,14 +219,23 @@ RESUME:
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 //------------------------------------------------------
+int LoadStartModule(char *module)
+{
+	main_ctx.modid = sceKernelLoadModule(module, 0, NULL);
 
-int LoadStartModule(void)
+	if (main_ctx.modid < 0)
+		return main_ctx.modid;
+
+	return sceKernelStartModule(main_ctx.modid, strlen(module)+1, module, NULL, NULL);
+}
+
+int load_cmf_state_module(void)
 {
 	if( sceKernelFindModuleByName(mod_name) != NULL ) return 0;
 	while(1)
 	{
 		if(sceKernelFindModuleByName("sceKernelLibrary")){
-			main_ctx.modid = sceKernelLoadModule("ms0:/CheatMaster/prx/state.prx", 0, NULL);
+			LoadStartModule("ms0:/CheatMaster/prx/state.prx");
 
 			break;
 		}
@@ -291,7 +300,7 @@ int main_thread(SceSize args, void *argp)
 	}
 	else if(!FIO_S_ISDIR(buf.st_mode)) return 1;
 
-	LoadStartModule();
+	load_cmf_state_module();
 	SceCtrlData pad;
 	char number;
 
