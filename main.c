@@ -104,6 +104,12 @@ char GetButtons(SceCtrlData *pad)
 	return 0x00;
 }
 
+void ClearCaches(void)
+{
+	sceKernelIcacheInvalidateAll();
+	sceKernelDcacheWritebackInvalidateAll();
+}
+
 void get_gname()
 {
 	int fd;
@@ -114,7 +120,6 @@ void get_gname()
 	{
 	case PSP_INIT_KEYCONFIG_POPS:
 		fd = 0;
-		char *p;
 		p=(char *)(0x100b8b7+0x8800000);
 		while(*p==0 && fd++<10)
 		{
@@ -132,7 +137,32 @@ void get_gname()
 		strcpy(main_ctx.gname, p);
 		break;
 	default:
-		strcpy(main_ctx.gname,"HOMEBREW");
+		//This part is from reversed PspStates
+		p = sceKernelInitFileName();
+
+		if(p != NULL)
+		{
+			char *ptr;
+			char *id_start;
+			// search
+			ptr = strrchr(p, '/');
+
+			// set
+			*ptr = '\0';
+
+			// search
+			id_start = strrchr(p, '/');
+
+			// copy
+			strncpy(main_ctx.gname, id_start + 1, 9);
+
+			// set
+			main_ctx.gname[9] = '\0';
+
+			// reset
+			*ptr = '/';
+		}
+		else strcpy(main_ctx.gname, "HOMEBREW");
 		break;
 	}
 }
@@ -260,6 +290,7 @@ int init(char number)
 	sprintf(ssav2, "%s/%c_1.BIN", main_ctx.save_path, number);
 
 	pause_game(main_ctx.mainthid);
+	ClearCaches();
 
 	return 0;
 }
