@@ -1,4 +1,4 @@
-//This file includes codes from prx-common-librarys and CMF.
+//This file includes codes from prx-common-librarys, CMF and reversed PspStates.
 //CMF codes is licensed under GPLv3.
 
 #include <pspsdk.h>
@@ -16,7 +16,7 @@
 
 /*-----------------------------------------------------------------*/
 
-PSP_MODULE_INFO("PspStates", 0x1000, 0, 1);
+PSP_MODULE_INFO("PspStates", PSP_MODULE_KERNEL, 0, 4);
 
 
 /*------------------------------------------------------------------*/
@@ -62,54 +62,6 @@ char save_dir[] = { "ms0:/SAVESTATE_CMF"};
 
 void *sceKernelGetGameInfo();
 
-char GetButtons(SceCtrlData *pad)
-{
-	if(pad->Buttons & PSP_CTRL_LEFT)
-	{
-		return 'l';
-	}
-	else if(pad->Buttons & PSP_CTRL_UP)
-	{
-		return 'u';
-	}
-	else if(pad->Buttons & PSP_CTRL_DOWN)
-	{
-		return 'd';
-	}
-	else if(pad->Buttons & PSP_CTRL_RIGHT)
-	{
-		return 'r';
-	}
-	else if(pad->Buttons & PSP_CTRL_SQUARE)
-	{
-		return 'q';
-	}
-	else if(pad->Buttons & PSP_CTRL_TRIANGLE)
-	{
-		return 't';
-	}
-	else if(pad->Buttons & PSP_CTRL_CROSS)
-	{
-		return 'x';
-	}
-	else if(pad->Buttons & PSP_CTRL_CIRCLE)
-	{
-		return 'c';
-	}
-	else if(pad->Buttons & PSP_CTRL_START)
-	{
-		return 's';
-	}
-
-	return 0x00;
-}
-
-void ClearCaches(void)
-{
-	sceKernelIcacheInvalidateAll();
-	sceKernelDcacheWritebackInvalidateAll();
-}
-
 void get_gname()
 {
 	int fd;
@@ -123,7 +75,7 @@ void get_gname()
 		p=(char *)(0x100b8b7+0x8800000);
 		while(*p==0 && fd++<10)
 		{
-			sceKernelDelayThread(3000000);
+			sceKernelDelayThread(65536);
 		}
 		p=(char *)(0x100b8b0+0x8800000);
 		p=strchr(p, ';');
@@ -132,9 +84,16 @@ void get_gname()
 		else strcpy(main_ctx.gname,"PSX");
 		break;
 	case PSP_INIT_KEYCONFIG_GAME:
-		//This part is from CustomHOME
-		p = sceKernelGetGameInfo() + 0x44;
-		strcpy(main_ctx.gname, p);
+		while (1)
+		{
+			fd = sceIoOpen("disc0:/UMD_DATA.BIN", PSP_O_RDONLY, 0777);
+			if (fd >= 0) {
+				sceIoRead(fd, main_ctx.gname, 10);
+				sceIoClose(fd);
+				break;
+			}
+			sceKernelDelayThread(65536);
+		}
 		break;
 	default:
 		//This part is from reversed PspStates
@@ -245,6 +204,61 @@ RESUME:
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+//  Reversed Codes from PspStates by plum, Dark_AleX
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------
+
+char GetButtons(SceCtrlData *pad)
+{
+	if(pad->Buttons & PSP_CTRL_LEFT)
+	{
+		return 'l';
+	}
+	else if(pad->Buttons & PSP_CTRL_UP)
+	{
+		return 'u';
+	}
+	else if(pad->Buttons & PSP_CTRL_DOWN)
+	{
+		return 'd';
+	}
+	else if(pad->Buttons & PSP_CTRL_RIGHT)
+	{
+		return 'r';
+	}
+	else if(pad->Buttons & PSP_CTRL_SQUARE)
+	{
+		return 'q';
+	}
+	else if(pad->Buttons & PSP_CTRL_TRIANGLE)
+	{
+		return 't';
+	}
+	else if(pad->Buttons & PSP_CTRL_CROSS)
+	{
+		return 'x';
+	}
+	else if(pad->Buttons & PSP_CTRL_CIRCLE)
+	{
+		return 'c';
+	}
+	else if(pad->Buttons & PSP_CTRL_START)
+	{
+		return 's';
+	}
+
+	return 0x00;
+}
+
+void ClearCaches(void)
+{
+	sceKernelIcacheInvalidateAll();
+	sceKernelDcacheWritebackInvalidateAll();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //  INIT METHOD		by SnyFbSx and estuibal
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +284,7 @@ int load_cmf_state_module(void)
 			break;
 		}
 
-		sceKernelDelayThread(1000);
+		sceKernelDelayThread(65536);
 	}
 	if (main_ctx.modid < 0) return 1;
 
@@ -315,6 +329,10 @@ void LoadStates(char number, int flag)
 int main_thread(SceSize args, void *argp)
 {
 	main_ctx.pauseuid = -1;
+	SceCtrlData pad;
+	char number;
+
+	load_cmf_state_module();
 
 	get_gname();
 	sprintf(main_ctx.save_path, "%s/%s", save_dir, main_ctx.gname);
@@ -331,13 +349,9 @@ int main_thread(SceSize args, void *argp)
 	}
 	else if(!FIO_S_ISDIR(buf.st_mode)) return 1;
 
-	load_cmf_state_module();
-	SceCtrlData pad;
-	char number;
-
 	while(1)
 	{
-		sceKernelDelayThread(50000);
+		sceKernelDelayThread(65536);
 		sceCtrlPeekBufferPositive(&pad, 1);
 
 		if(pad.Buttons & PSP_CTRL_SELECT)
@@ -362,7 +376,7 @@ int main_thread(SceSize args, void *argp)
 
 int module_start(SceSize args, void *argp)
 {
-	main_ctx.mainthid = sceKernelCreateThread("CMFStateModuleLoaderThread", main_thread, 8, 64*1024, 0, NULL);
+	main_ctx.mainthid = sceKernelCreateThread("CMFStateModuleLoaderThread", main_thread, 32, 4096, 0, NULL);
 	if(main_ctx.mainthid >= 0)
 	{
 		sceKernelStartThread(main_ctx.mainthid, args, argp);
