@@ -52,8 +52,8 @@ typedef struct _main_ctx{
 	char save_path[32];
 }__attribute__((packed)) t_main_ctx;
 
-char *ssave;
-char *ssav2;
+char ssave[256];
+char ssav2[256];
 
 static t_main_ctx main_ctx __attribute__(   (  aligned( 4 ), section( ".bss" )  )   );
 
@@ -84,16 +84,11 @@ void get_gname()
 		else strcpy(main_ctx.gname,"PSX");
 		break;
 	case PSP_INIT_KEYCONFIG_GAME:
-		while (1)
-		{
-			fd = sceIoOpen("disc0:/UMD_DATA.BIN", PSP_O_RDONLY, 0777);
-			if (fd >= 0) {
-				sceIoRead(fd, main_ctx.gname, 10);
-				sceIoClose(fd);
-				break;
-			}
+		fd = -1;
+		for (fd = -1; fd < 0; fd = sceIoOpen("disc0:/UMD_DATA.BIN", PSP_O_RDONLY, 0777))
 			sceKernelDelayThread(65536);
-		}
+		sceIoRead(fd, main_ctx.gname, 10);
+		sceIoClose(fd);
 		break;
 	default:
 		//This part is from reversed PspStates
@@ -290,8 +285,10 @@ int load_cmf_state_module(void)
 
 	SceKernelModuleInfo info;
 	sceKernelQueryModuleInfo(main_ctx.modid, &info);
-	ssave = (char *)(info.text_addr + 0x1C00);
-	ssav2 = (char *)(info.text_addr + 0x1C40);
+	*(short *)(info.text_addr + 0x47C) = (int)&ssave >> 16;
+	*(short *)(info.text_addr + 0x480) = (int)&ssave & 0xFFFF;
+	*(short *)(info.text_addr + 0x3D0) = (int)&ssav2 >> 16;
+	*(short *)(info.text_addr + 0x3D4) = (int)&ssav2 & 0xFFFF;
 
 	sceKernelStartModule(main_ctx.modid, strlen(mod_name)+1, mod_name, NULL, NULL);
 
