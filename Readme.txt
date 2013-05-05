@@ -62,7 +62,7 @@ CMFStateModuleLoader Rev.4 by 173210
 このプログラムは
 koro氏によって作成されたCMFのソースコードと
 Team Otwibacoによって作成されたPrx Common Librariesのソースコード、
-ABCanG (阿部)によって作成されたCustomHOMEのソースコード、
+ABCanG (阿部)によって作成されたCustomHOMEのソースコード(Rev.4で該当部分削除)、
 plum氏によってリバースされたPspStatesのソースコード
 を参考にしています。
 koro氏とABCanG (阿部)、plum氏、Team Otwibacoのみなさん、ありがとうございます。
